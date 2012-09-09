@@ -7,7 +7,7 @@ import com.omrlnr.bot.gui.Bot;
  * 
  * @author Omer Elnour
  */
-public class Main
+public final class Main
 {
 	/**
 	 * The main entry point for the JVM.

@@ -3,7 +3,6 @@ package com.omrlnr.bot;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
@@ -14,6 +13,12 @@ import org.objectweb.asm.tree.ClassNode;
 
 import com.omrlnr.bot.adapter.impl.CanvasAdapter;
 
+import fj.Effect;
+import fj.F;
+import fj.data.List;
+
+import static fj.data.List.list;
+
 /**
  * Injects modifications into the client and then dumps it. The bot will use the
  * injected client.
@@ -23,9 +28,9 @@ import com.omrlnr.bot.adapter.impl.CanvasAdapter;
 public class Injector
 {
 	/**
-	 * A {@link HashMap} containing all the {@link ClassNode}s in the JAR file.
+	 * A {@link List} containing all the {@link ClassNode}s in the JAR file.
 	 */
-	private static HashMap<String, ClassNode> classes = new HashMap<>();
+	private static List<ClassNode> classes = list();
 
 	/**
 	 * The main entry point for the JVM.
@@ -64,7 +69,7 @@ public class Injector
 			{
 				ClassNode node = new ClassNode();
 				new ClassReader(jf.getInputStream(entry)).accept(node, 0);
-				classes.put(node.name, node);
+				classes = classes.snoc(node);
 			}
 		}
 
@@ -78,18 +83,29 @@ public class Injector
 		/**
 		 * Finally, we dump the JAR!
 		 */
-		File newJar = new File("./client/injected.jar");
-		FileOutputStream stream = new FileOutputStream(newJar);
-		JarOutputStream out = new JarOutputStream(stream);
+		final File newJar = new File("./client/injected.jar");
+		final FileOutputStream stream = new FileOutputStream(newJar);
+		final JarOutputStream out = new JarOutputStream(stream);
 
-		for (ClassNode node : classes.values())
+		classes.foreach(new Effect<ClassNode>()
 		{
-			JarEntry entry = new JarEntry(node.name + ".class");
-			out.putNextEntry(entry);
-			ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-			node.accept(cw);
-			out.write(cw.toByteArray());
-		}
+			@Override
+			public void e(ClassNode node)
+			{
+				try
+				{
+					JarEntry entry = new JarEntry(node.name + ".class");
+					out.putNextEntry(entry);
+					ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+					node.accept(cw);
+					out.write(cw.toByteArray());
+				}
+				catch (Exception exception)
+				{
+					exception.printStackTrace();
+				}
+			}
+		});
 
 		out.close();
 		stream.close();
@@ -101,16 +117,13 @@ public class Injector
 	 */
 	private static void apply()
 	{
-		ClassNode canvas = null;
-		for (ClassNode node : classes.values())
+		new CanvasAdapter().adapt(classes.filter(new F<ClassNode, Boolean>()
 		{
-			if (node.superName.equals("java/awt/Canvas"))
+			@Override
+			public Boolean f(ClassNode node)
 			{
-				canvas = node;
-				break;
+				return node.superName.equals("java/awt/Canvas");
 			}
-		}
-
-		new CanvasAdapter().adapt(canvas);
+		}).head());
 	}
 }

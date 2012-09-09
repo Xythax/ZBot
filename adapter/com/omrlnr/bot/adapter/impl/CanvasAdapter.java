@@ -11,8 +11,8 @@ import org.objectweb.asm.tree.MethodNode;
 import java.util.ListIterator;
 
 /**
- * Handles the subclassing of the canvas class (replaces all instances of
- * java/awt/CanvasAdapter with our own implementation)
+ * Handles the subclassing of the {@link java.awt.Canvas} class (replaces all
+ * instances of java/awt/Canvas with our own implementation)
  * 
  * @author Omer Elnour
  */
@@ -44,7 +44,6 @@ public class CanvasAdapter implements Adapter
 				}
 			}
 		}
-
 		return true;
 	}
 }
